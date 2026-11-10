@@ -1565,3 +1565,52 @@ func TestKbuildSemantics(t *testing.T) {
 		}
 	}
 }
+
+// TestLinks checks that each way a source is compiled keeps the object it
+// goes into, which the OR of Files loses.
+func TestLinks(t *testing.T) {
+	r := crawl(t, map[string]string{
+		"Makefile":         "drivers-y := drivers/\nnet-y := net/\n",
+		"drivers/Makefile": "obj-y += d/\n",
+		"drivers/d/Makefile": `
+obj-$(CONFIG_FOO) += foo.o
+obj-$(CONFIG_BAR) += bar.o
+foo-$(CONFIG_A) += x.o
+bar-$(CONFIG_B) += x.o
+obj-$(CONFIG_P) += lp.o
+obj-$(CONFIG_I) += incl.o
+`,
+		"drivers/d/x.c": "", "drivers/d/lp.c": "", "drivers/d/incl.c": "#include \"inc.c\"\n",
+		"drivers/d/inc.c": "",
+		"net/Makefile":    "obj-y += ipv6/\n",
+		// A file obj-y lists under a guard on a module's option is still
+		// built in: net/ipv6's mcast_snoop.o.
+		"net/ipv6/Makefile": "obj-$(CONFIG_IPV6) += ipv6.o\nipv6-y := af_inet6.o\n" +
+			"ifneq ($(CONFIG_IPV6),)\nobj-y += mcast_snoop.o\nendif\n",
+		"net/ipv6/af_inet6.c": "", "net/ipv6/mcast_snoop.c": "",
+	})
+	type link struct{ object, builtin, module string }
+	for p, want := range map[string][]link{
+		// One object, named by the object, not the source.
+		"drivers/d/lp.c": {{"drivers/d/lp", "CONFIG_P=y", "CONFIG_P=m"}},
+		// One source, two composites: one link each, by its own option.
+		"drivers/d/x.c": {
+			{"drivers/d/foo", "CONFIG_A=y && CONFIG_FOO=y", "CONFIG_A && CONFIG_FOO=m"},
+			{"drivers/d/bar", "CONFIG_B=y && CONFIG_BAR=y", "CONFIG_B && CONFIG_BAR=m"},
+		},
+		"net/ipv6/af_inet6.c": {{"net/ipv6/ipv6", "CONFIG_IPV6=y", "CONFIG_IPV6=m"}},
+		// Built in with CONFIG_IPV6=m, though its gate tests only CONFIG_IPV6.
+		"net/ipv6/mcast_snoop.c": {{"net/ipv6/mcast_snoop", "CONFIG_IPV6", "false"}},
+		// #included into incl.o, which Links can't name: no links at all.
+		"drivers/d/inc.c": nil,
+	} {
+		var got []link
+		for _, l := range r.Links(p) {
+			got = append(got, link{l.Object, l.Builtin.String(), l.Module.String()})
+		}
+		slices.SortFunc(got, func(a, b link) int { return strings.Compare(b.object, a.object) })
+		if !slices.Equal(got, want) {
+			t.Errorf("%s:\n got %v\nwant %v", p, got, want)
+		}
+	}
+}

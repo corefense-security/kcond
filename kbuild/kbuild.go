@@ -130,10 +130,57 @@ type flag struct {
 }
 
 // compilation is one way a source is compiled: under cond, into the
-// kernel under builtin and into a module under module, with flags.
+// kernel under builtin and into a module under module, as part of object,
+// with flags.
 type compilation struct {
 	cond, builtin, module *kcond.Expr
+	object                string // see listing.object; "" for a .lds or .s target
 	flags                 []flag
+}
+
+// Link is one way a source is compiled, as Links returns it.
+//
+// Files[p] is the OR of the Cond of every Link of p: it answers whether p
+// is compiled at all, but not where it goes. A Link keeps that apart:
+//
+//	obj-$(CONFIG_FOO) += foo.o     foo-$(CONFIG_A) += x.o
+//	obj-$(CONFIG_BAR) += bar.o     bar-$(CONFIG_B) += x.o
+//
+//	Files["x.c"] = (CONFIG_FOO && CONFIG_A) || (CONFIG_BAR && CONFIG_B)
+//	Links("x.c") = {Object: foo, Builtin: CONFIG_A=y && CONFIG_FOO=y, Module: CONFIG_A && CONFIG_FOO=m}
+//	               {Object: bar, Builtin: CONFIG_B=y && CONFIG_BAR=y, Module: CONFIG_B && CONFIG_BAR=m}
+//
+// Builtin and Module can both be false where Cond holds: an extra-y or
+// always-y object, or one in a directory only obj-m reaches, is compiled
+// but neither linked into vmlinux nor made a module. So Cond, not Builtin
+// || Module, says whether the source is compiled.
+type Link struct {
+	// Object is the listed object without .o, from the top of the tree,
+	// such as net/sctp/sctp; it is "" for a target that is no object.
+	Object string
+	// Cond is when the source is compiled this way, Builtin when the
+	// object is then linked into vmlinux, Module when it is a module,
+	// Object.ko. The conditions are as the crawl writes them: a bool
+	// option still has its =m test (see builds.Build.Plain).
+	Cond, Builtin, Module *kcond.Expr
+}
+
+// Links returns the ways source p is compiled, one per object a Makefile
+// lists it in. It is nil for a file no Makefile lists, and for one another
+// file #includes as well, such as a .c file #included into another: the
+// includer's object is where that code also goes, and Links can't name it,
+// so it would understate where the file is built. Module covers those.
+func (r *Result) Links(p string) []Link {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.includers[p]) > 0 {
+		return nil
+	}
+	var out []Link
+	for _, c := range r.compiled[p] {
+		out = append(out, Link{Object: c.object, Cond: c.cond, Builtin: c.builtin, Module: c.module})
+	}
+	return out
 }
 
 // Define returns the conditions under which source p is compiled with the
@@ -491,6 +538,25 @@ func (r *Result) targets(f string, d incLine, level map[string]bool) []target {
 	return out
 }
 
+// IncludeDirs lists the -I directories of the objects compiled under a
+// condition keep accepts, for finding what their #include names mean.
+func (r *Result) IncludeDirs(keep func(*kcond.Expr) bool) []string {
+	seen := map[string]bool{}
+	var dirs []string
+	for _, cs := range r.compiled {
+		for _, c := range cs {
+			for _, f := range c.flags {
+				if f.kind == includeDir && !seen[f.arg] && keep(kcond.And(c.cond, f.cond)) {
+					seen[f.arg] = true
+					dirs = append(dirs, f.arg)
+				}
+			}
+		}
+	}
+	slices.Sort(dirs)
+	return dirs
+}
+
 // includeDirs returns the files the -I directories of the objects compiled
 // from src give the #include name on a line under cond.
 func (r *Result) includeDirs(src, name string, cond *kcond.Expr) []target {
@@ -673,6 +739,12 @@ type listing struct {
 	// linked is set for an object of obj-y or obj-m: Kbuild compiles its
 	// built-in form only where the directory has need-builtin (see Crawl).
 	linked bool
+	// object is the object the Makefile lists, without .o, from the top
+	// of the tree: the composite a member is linked into, not the member
+	// itself. For obj-m += sctp.o, with sctp-y += socket.o, the listing of
+	// net/sctp/socket.c has object net/sctp/sctp, so its module is
+	// kernel/net/sctp/sctp.ko.
+	object string
 }
 
 type edge struct {
@@ -853,7 +925,8 @@ func Crawl(fsys fs.FS, opts Options) (*Result, error) {
 		if path.Ext(l.src) == ".S" {
 			sub = fl[1]
 		}
-		r.compiled[l.src] = append(r.compiled[l.src], compilation{c, builtin, module, slices.Concat(l.flags, sub)})
+		r.compiled[l.src] = append(r.compiled[l.src], compilation{cond: c, builtin: builtin, module: module,
+			object: l.object, flags: slices.Concat(l.flags, sub)})
 	}
 	if scan.Wait(); scanErr != nil {
 		return nil, scanErr
@@ -1069,8 +1142,12 @@ func collect(ev *evaluator, r *Result) ([]subdir, []listing) {
 				m = kcond.And(m, kcond.Not(condOf(ys, w.text)))
 				k.builtin, k.module = kcond.And(w.cond, kcond.Not(m)), m
 			}
+			// w.text is the listed object. resolveObject expands a composite
+			// into its members, so the object must be noted here, before
+			// the expansion forgets which composite each member belongs to.
+			object := cleanPath(path.Join(ev.dir, strings.TrimSuffix(w.text, ".o")))
 			for _, l := range resolveObject(ev, w.text, k, map[string]bool{w.text: true}) {
-				l.linked = linked
+				l.linked, l.object = linked, object
 				ls = append(ls, l)
 			}
 		case strings.HasSuffix(w.text, ".lds"):
@@ -1184,7 +1261,7 @@ func leafAt(ev *evaluator, obj string, k modes, depth int) []listing {
 	for _, s := range stems {
 		for _, ext := range sourceExts {
 			if _, err := fs.Stat(ev.fsys, s+ext); err == nil {
-				return []listing{{ev.dir, s + ext, k, objFlags(ev, obj, ext), false}}
+				return []listing{{dir: ev.dir, src: s + ext, modes: k, flags: objFlags(ev, obj, ext)}}
 			}
 		}
 	}
@@ -1209,7 +1286,7 @@ func leafAt(ev *evaluator, obj string, k modes, depth int) []listing {
 					more = leafAt(ev, strings.TrimPrefix(src, ev.dir+"/"), k.and(c), depth+1)
 				}
 			} else if _, err := fs.Stat(ev.fsys, src); err == nil {
-				more = []listing{{ev.dir, src, k.and(c), objFlags(ev, obj, path.Ext(src)), false}}
+				more = []listing{{dir: ev.dir, src: src, modes: k.and(c), flags: objFlags(ev, obj, path.Ext(src))}}
 			}
 			if len(more) == 0 {
 				continue
