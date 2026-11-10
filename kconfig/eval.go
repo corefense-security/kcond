@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/linux-analysis/kcond"
+	"github.com/corefense-security/kcond"
 )
 
 // Set is a set of tristate values.

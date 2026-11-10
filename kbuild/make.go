@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/linux-analysis/kcond"
+	"github.com/corefense-security/kcond"
 )
 
 // cword is a word that is present under cond. opaque marks text produced

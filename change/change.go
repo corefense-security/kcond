@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/linux-analysis/kcond"
-	"github.com/linux-analysis/kcond/kbuild"
-	"github.com/linux-analysis/kcond/unidiff"
+	"github.com/corefense-security/kcond"
+	"github.com/corefense-security/kcond/kbuild"
+	"github.com/corefense-security/kcond/unidiff"
 )
 
 // Blobs reads file contents by rev:path; gitfs.CatFile implements it.

@@ -12,8 +12,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/linux-analysis/kcond"
-	"github.com/linux-analysis/kcond/builds"
+	"github.com/corefense-security/kcond"
+	"github.com/corefense-security/kcond/builds"
 )
 
 // File is a kernel .config as Read reads it.

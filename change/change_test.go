@@ -3,7 +3,7 @@ package change
 import (
 	"testing"
 
-	"github.com/linux-analysis/kcond"
+	"github.com/corefense-security/kcond"
 )
 
 type blobs map[string]string

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/linux-analysis/kcond"
+	"github.com/corefense-security/kcond"
 )
 
 // Include is an #include directive that names a .c or .S file, or a Rust

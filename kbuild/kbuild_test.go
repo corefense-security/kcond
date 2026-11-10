@@ -10,7 +10,7 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/linux-analysis/kcond"
+	"github.com/corefense-security/kcond"
 )
 
 // tree builds an in-memory kernel tree. Files listed only by name (empty

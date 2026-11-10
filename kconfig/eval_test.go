@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/linux-analysis/kcond"
+	"github.com/corefense-security/kcond"
 )
 
 func analyze(t *testing.T, files map[string]string, env Env) *Values {

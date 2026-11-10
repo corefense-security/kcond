@@ -1,3 +1,3 @@
-module github.com/linux-analysis/kcond
+module github.com/corefense-security/kcond
 
 go 1.26.0

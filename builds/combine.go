@@ -1,8 +1,8 @@
 package builds
 
 import (
-	"github.com/linux-analysis/kcond"
-	"github.com/linux-analysis/kcond/kbuild"
+	"github.com/corefense-security/kcond"
+	"github.com/corefense-security/kcond/kbuild"
 )
 
 // File statuses of a crawl.

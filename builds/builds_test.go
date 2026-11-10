@@ -8,8 +8,8 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/linux-analysis/kcond"
-	"github.com/linux-analysis/kcond/kbuild"
+	"github.com/corefense-security/kcond"
+	"github.com/corefense-security/kcond/kbuild"
 )
 
 // archTree is a kernel with x86, arm64 and s390: drivers for one SoC

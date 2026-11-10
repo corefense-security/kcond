@@ -10,7 +10,7 @@ standard library and git (2.31 or later) only.
 
 ## Install
 
-    go install github.com/linux-analysis/kcond/cmd/kcond@latest
+    go install github.com/corefense-security/kcond/cmd/kcond@latest
 
 Or `make build` in a checkout, for `bin/kcond`.
 
@@ -155,10 +155,10 @@ CONFIG_BONDING`; errors exit 2. Every command prints JSON with `--json`.
 
 ```go
 import (
-	"github.com/linux-analysis/kcond"
-	"github.com/linux-analysis/kcond/builds"
-	"github.com/linux-analysis/kcond/dotconfig"
-	"github.com/linux-analysis/kcond/gitfs"
+	"github.com/corefense-security/kcond"
+	"github.com/corefense-security/kcond/builds"
+	"github.com/corefense-security/kcond/dotconfig"
+	"github.com/corefense-security/kcond/gitfs"
 )
 
 tree, err := gitfs.Open(ctx, dir, "v6.12")  // an fs.FS; gitfs.WorkTree reads a checkout

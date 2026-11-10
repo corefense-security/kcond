@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/linux-analysis/kcond/builds"
+	"github.com/corefense-security/kcond/builds"
 )
 
 // gzipped compresses data as gzip does /proc/config.gz.

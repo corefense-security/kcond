@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/linux-analysis/kcond"
+	"github.com/corefense-security/kcond"
 )
 
 // A .c or .S file a listed source #includes is built with it, under the

@@ -4,8 +4,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/linux-analysis/kcond"
-	"github.com/linux-analysis/kcond/kbuild"
+	"github.com/corefense-security/kcond"
+	"github.com/corefense-security/kcond/kbuild"
 )
 
 // pageSize is a page size an architecture may have, with the Kconfig

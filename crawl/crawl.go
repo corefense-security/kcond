@@ -12,10 +12,10 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/linux-analysis/kcond"
-	"github.com/linux-analysis/kcond/builds"
-	"github.com/linux-analysis/kcond/gitfs"
-	"github.com/linux-analysis/kcond/kbuild"
+	"github.com/corefense-security/kcond"
+	"github.com/corefense-security/kcond/builds"
+	"github.com/corefense-security/kcond/gitfs"
+	"github.com/corefense-security/kcond/kbuild"
 )
 
 // File is a changed file to look up.

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/linux-analysis/kcond"
-	"github.com/linux-analysis/kcond/builds"
+	"github.com/corefense-security/kcond"
+	"github.com/corefense-security/kcond/builds"
 )
 
 func git(t *testing.T, dir string, args ...string) {

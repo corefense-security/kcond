@@ -25,14 +25,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/linux-analysis/kcond"
-	"github.com/linux-analysis/kcond/builds"
-	"github.com/linux-analysis/kcond/change"
-	"github.com/linux-analysis/kcond/crawl"
-	"github.com/linux-analysis/kcond/dotconfig"
-	"github.com/linux-analysis/kcond/gitfs"
-	"github.com/linux-analysis/kcond/kbuild"
-	"github.com/linux-analysis/kcond/unidiff"
+	"github.com/corefense-security/kcond"
+	"github.com/corefense-security/kcond/builds"
+	"github.com/corefense-security/kcond/change"
+	"github.com/corefense-security/kcond/crawl"
+	"github.com/corefense-security/kcond/dotconfig"
+	"github.com/corefense-security/kcond/gitfs"
+	"github.com/corefense-security/kcond/kbuild"
+	"github.com/corefense-security/kcond/unidiff"
 )
 
 const usage = `usage: kcond [flags] command [args]

@@ -13,9 +13,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/linux-analysis/kcond"
-	"github.com/linux-analysis/kcond/kbuild"
-	"github.com/linux-analysis/kcond/kconfig"
+	"github.com/corefense-security/kcond"
+	"github.com/corefense-security/kcond/kbuild"
+	"github.com/corefense-security/kcond/kconfig"
 )
 
 // LabelArches are the architectures labels name, in display order; x86

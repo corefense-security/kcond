@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-const module = "github.com/linux-analysis/kcond"
+const module = "github.com/corefense-security/kcond"
 
 // TestStandardLibraryOnly guards the rule the module lives by: its
 // packages, tests included, depend on the standard library and on each

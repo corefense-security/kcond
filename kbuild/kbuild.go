@@ -19,7 +19,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/linux-analysis/kcond"
+	"github.com/corefense-security/kcond"
 )
 
 // Options selects what to crawl.

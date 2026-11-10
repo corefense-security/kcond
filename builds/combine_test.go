@@ -3,7 +3,7 @@ package builds
 import (
 	"testing"
 
-	"github.com/linux-analysis/kcond"
+	"github.com/corefense-security/kcond"
 )
 
 func p(t *testing.T, s string) *kcond.Expr {
