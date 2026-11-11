@@ -10,9 +10,9 @@ import (
 	"github.com/corefense-security/kcond/builds"
 )
 
-// tree writes a small kernel: a.c always built, b.c behind CONFIG_B, private.h
-// only b.c includes, shared.h both do, orphan.h nothing does, and arm64 code x86
-// never reads.
+// tree writes a small kernel. a.c is always built and b.c is behind CONFIG_B.
+// Only b.c includes private.h, both include shared.h, and nothing includes
+// orphan.h. It also has arm64 code, which x86 never reads.
 func tree(t *testing.T) *Tree {
 	t.Helper()
 	dir := t.TempDir()
@@ -89,7 +89,7 @@ func TestLinksAndDirGate(t *testing.T) {
 	tr := tree(t)
 	for p, want := range map[string][]Link{
 		"drivers/a.c": {{Object: "drivers/a", Builtin: "true", Module: "false"}},
-		// CONFIG_B is a tristate: built in at y, the module drivers/b.ko at m.
+		// CONFIG_B is a tristate. At y it is built in, at m it is drivers/b.ko.
 		"drivers/b.c": {{Object: "drivers/b", Builtin: "CONFIG_B=y", Module: "CONFIG_B=m"}},
 		// A header has no object of its own.
 		"drivers/private.h": nil,
@@ -107,7 +107,7 @@ func TestLinksAndDirGate(t *testing.T) {
 	}
 	for p, want := range map[string]string{
 		"drivers/moved.c":     "true",       // a.c beside it is always compiled
-		"drivers/opt/new.c":   "CONFIG_B=y", // obj-$(CONFIG_B) += opt/: its obj-y builds only at B=y
+		"drivers/opt/new.c":   "CONFIG_B=y", // obj-$(CONFIG_B) += opt/, so its obj-y builds only at B=y
 		"net/gone/x.c":        "",           // no source in that directory
 		"include/linux/new.h": "",           // a header can be included from anywhere
 	} {

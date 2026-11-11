@@ -134,14 +134,14 @@ type flag struct {
 // with flags.
 type compilation struct {
 	cond, builtin, module *kcond.Expr
-	object                string // see listing.object; "" for a .lds or .s target
+	object                string // see listing.object, empty for a .lds or .s target
 	flags                 []flag
 }
 
 // Link is one way a source is compiled, as Links returns it.
 //
-// Files[p] is the OR of the Cond of every Link of p: it answers whether p
-// is compiled at all, but not where it goes. A Link keeps that apart:
+// Files[p] is the OR of the Cond of every Link of p. It says whether p is
+// compiled at all, but not where it goes. Links keeps the ways apart:
 //
 //	obj-$(CONFIG_FOO) += foo.o     foo-$(CONFIG_A) += x.o
 //	obj-$(CONFIG_BAR) += bar.o     bar-$(CONFIG_B) += x.o
@@ -150,26 +150,28 @@ type compilation struct {
 //	Links("x.c") = {Object: foo, Builtin: CONFIG_A=y && CONFIG_FOO=y, Module: CONFIG_A && CONFIG_FOO=m}
 //	               {Object: bar, Builtin: CONFIG_B=y && CONFIG_BAR=y, Module: CONFIG_B && CONFIG_BAR=m}
 //
-// Builtin and Module can both be false where Cond holds: an extra-y or
+// Builtin and Module can both be false where Cond holds. An extra-y or
 // always-y object, or one in a directory only obj-m reaches, is compiled
-// but neither linked into vmlinux nor made a module. So Cond, not Builtin
-// || Module, says whether the source is compiled.
+// but neither linked into vmlinux nor made a module. So use Cond to tell
+// whether the source is compiled. Builtin || Module can miss it.
 type Link struct {
 	// Object is the listed object without .o, from the top of the tree,
-	// such as net/sctp/sctp; it is "" for a target that is no object.
+	// such as net/sctp/sctp. It is "" for a target that is not an object.
 	Object string
-	// Cond is when the source is compiled this way, Builtin when the
-	// object is then linked into vmlinux, Module when it is a module,
-	// Object.ko. The conditions are as the crawl writes them: a bool
-	// option still has its =m test (see builds.Build.Plain).
+	// Cond is when the source is compiled this way. Builtin is when the
+	// object is then linked into vmlinux, and Module when it is built as
+	// the module Object.ko. The conditions are as the crawl writes them,
+	// so a bool option still has its =m test (see builds.Build.Plain).
 	Cond, Builtin, Module *kcond.Expr
 }
 
 // Links returns the ways source p is compiled, one per object a Makefile
-// lists it in. It is nil for a file no Makefile lists, and for one another
-// file #includes as well, such as a .c file #included into another: the
-// includer's object is where that code also goes, and Links can't name it,
-// so it would understate where the file is built. Module covers those.
+// lists it in. It returns nil for a file no Makefile lists. It also returns
+// nil for a file another file #includes, such as a .c file #included into
+// another. That code also goes into the includer's object, which Links
+// can't name, so its links would understate where the file is built.
+// Callers then have only the file's gate, which says whether it is
+// compiled but not where.
 func (r *Result) Links(p string) []Link {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -740,8 +742,8 @@ type listing struct {
 	// built-in form only where the directory has need-builtin (see Crawl).
 	linked bool
 	// object is the object the Makefile lists, without .o, from the top
-	// of the tree: the composite a member is linked into, not the member
-	// itself. For obj-m += sctp.o, with sctp-y += socket.o, the listing of
+	// of the tree. For a member of a composite it is the composite. For
+	// obj-m += sctp.o, with sctp-y += socket.o, the listing of
 	// net/sctp/socket.c has object net/sctp/sctp, so its module is
 	// kernel/net/sctp/sctp.ko.
 	object string

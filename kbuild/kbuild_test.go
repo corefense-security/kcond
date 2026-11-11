@@ -1584,16 +1584,17 @@ obj-$(CONFIG_I) += incl.o
 		"drivers/d/inc.c": "",
 		"net/Makefile":    "obj-y += ipv6/\n",
 		// A file obj-y lists under a guard on a module's option is still
-		// built in: net/ipv6's mcast_snoop.o.
+		// built in, as with mcast_snoop.o in net/ipv6.
 		"net/ipv6/Makefile": "obj-$(CONFIG_IPV6) += ipv6.o\nipv6-y := af_inet6.o\n" +
 			"ifneq ($(CONFIG_IPV6),)\nobj-y += mcast_snoop.o\nendif\n",
 		"net/ipv6/af_inet6.c": "", "net/ipv6/mcast_snoop.c": "",
 	})
 	type link struct{ object, builtin, module string }
 	for p, want := range map[string][]link{
-		// One object, named by the object, not the source.
+		// One object. Object is the object's path, without the source's .c.
 		"drivers/d/lp.c": {{"drivers/d/lp", "CONFIG_P=y", "CONFIG_P=m"}},
-		// One source, two composites: one link each, by its own option.
+		// One source in two composites gets a link for each, under that
+		// composite's own option.
 		"drivers/d/x.c": {
 			{"drivers/d/foo", "CONFIG_A=y && CONFIG_FOO=y", "CONFIG_A && CONFIG_FOO=m"},
 			{"drivers/d/bar", "CONFIG_B=y && CONFIG_BAR=y", "CONFIG_B && CONFIG_BAR=m"},
@@ -1601,7 +1602,7 @@ obj-$(CONFIG_I) += incl.o
 		"net/ipv6/af_inet6.c": {{"net/ipv6/ipv6", "CONFIG_IPV6=y", "CONFIG_IPV6=m"}},
 		// Built in with CONFIG_IPV6=m, though its gate tests only CONFIG_IPV6.
 		"net/ipv6/mcast_snoop.c": {{"net/ipv6/mcast_snoop", "CONFIG_IPV6", "false"}},
-		// #included into incl.o, which Links can't name: no links at all.
+		// #included into incl.o, which Links can't name, so it has no links.
 		"drivers/d/inc.c": nil,
 	} {
 		var got []link

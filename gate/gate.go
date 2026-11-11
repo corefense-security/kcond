@@ -1,6 +1,6 @@
-// Package gate answers Trowl's question about a kernel tree: which config
-// gates compile the files a CVE record names. A Tree reads the tree and the
-// build once, so that the thousands of CVEs of a scan each cost a map lookup.
+// Package gate finds the config gates that compile the files a CVE record
+// names in a kernel tree. A Tree reads the tree and its build once, so each
+// of the thousands of CVEs in a scan costs a map lookup.
 package gate
 
 import (
@@ -23,9 +23,9 @@ import (
 	"github.com/corefense-security/kcond/kbuild"
 )
 
-// Skipped is the status of a file the kernel build compiles nothing from:
-// Makefile, Kconfig, documentation, tools and scripts. It says nothing about
-// the build; the other statuses are those of builds.
+// Skipped is the status of a file the kernel build compiles nothing from,
+// such as a Makefile, Kconfig, documentation, tools and scripts. It says
+// nothing about the build. The other statuses come from the builds package.
 const Skipped = "skipped"
 
 // File is one file of a CVE record as the build reads it.
@@ -35,25 +35,26 @@ type File struct {
 	// StatusUnlisted, StatusMissing or Skipped.
 	Status string
 	// Gate is the condition that compiles the file, in the syntax
-	// kcond.Parse reads; it is set when Status is built.
+	// kcond.Parse reads. It is set when Status is StatusBuilt.
 	Gate string
-	// Links are the objects a Makefile compiles the file into, which say
-	// where its code goes once Gate holds: into vmlinux or into a module.
-	// Gate is the OR of their conditions, and it alone says whether the
+	// Links are the objects a Makefile compiles the file into. They say
+	// whether its code goes into vmlinux or into a module once Gate holds.
+	// Gate is the OR of their conditions, and only Gate says whether the
 	// file is compiled (see kbuild.Link). Links is empty for a header and
-	// for a source another file #includes, whose objects aren't known.
+	// for a source another file #includes, because their objects aren't
+	// known.
 	Links []Link
 	// DirGate is set for a source the tree lacks (StatusMissing), such as
-	// one added after this release: the OR of the gates of the sources the
-	// tree has in its directory, "" when it has none there. Where it is
-	// false, the directory compiles nothing in this build, and a source
-	// added to it later would be compiled no more than its neighbours.
+	// one added after this release. It is the OR of the gates of the
+	// sources the tree has in that directory, or "" when there are none.
+	// Where it is false, the directory compiles nothing in this build, so a
+	// source added there later would not be compiled either.
 	DirGate string
 }
 
 // Link is one object a Makefile compiles a file into. Builtin and Module
-// are conditions in the syntax kcond.Parse reads, written plainly as Gate
-// is, so a bool option has no =m test.
+// are conditions in the syntax kcond.Parse reads. They are written plainly,
+// like Gate, so a bool option has no =m test.
 type Link struct {
 	// Object is the object without .o, from the top of the tree, such as
 	// net/sctp/sctp. As a module it is kernel/net/sctp/sctp.ko under
@@ -65,9 +66,9 @@ type Link struct {
 }
 
 // links returns the objects source p is compiled into in t's build. A way
-// of compiling it that has no object, such as a .lds linker script, can't
-// be placed, so the file then has no links at all: one left out would let
-// the others decide where its code goes.
+// of compiling p that has no object, such as a .lds linker script, can't be
+// placed. links then returns nil, because leaving that way out would let
+// the other links alone decide where the code goes.
 func (t *Tree) links(p string) []Link {
 	var out []Link
 	for _, l := range t.build.Kbuild.Links(p) {
@@ -92,17 +93,18 @@ type Tree struct {
 	dirGates map[string]string // dirGate's results, by directory
 }
 
-// dirGate is the OR of the gates of the C and assembly sources directly in
-// dir (not in its subdirectories), written plainly, or "" when the build
-// lists none there.
+// dirGate returns the OR of the gates of the C and assembly sources directly
+// in dir (not in its subdirectories), written plainly. It returns "" when
+// the build lists no source there.
 //
-// Kbuild compiles a source only when some Makefile lists it: its own
-// directory's, once the build descends into it, or another's, by a relative
-// path (amdgpu lists ../display/ files). Either way its neighbours show it:
-// when none of them is compiled, the directory isn't descended into and no
-// other Makefile reaches into it. A source added there later is then not
-// compiled either, unless the Makefile change that added it also hooked the
-// directory up some new way, which a fix doesn't do.
+// Kbuild compiles a source only when some Makefile lists it. That is the
+// Makefile of its own directory, once the build descends into it, or another
+// Makefile using a relative path (amdgpu lists ../display/ files). In both
+// cases the neighbours show it. When none of them is compiled, the build
+// doesn't descend into the directory and no other Makefile reaches into it.
+// A source added there later is then not compiled either. The exception is
+// a Makefile change that hooks the directory up some new way, and a fix
+// doesn't make one.
 func (t *Tree) dirGate(dir string) string {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -147,9 +149,10 @@ func Open(ctx context.Context, dir, build string) (*Tree, error) {
 	return &Tree{Dir: dir, Version: version, fsys: fsys, build: b}, nil
 }
 
-// filesystem reads a checkout through git when git can, as its grep makes
-// the #include scan fast. A container often has no git, or won't trust a
-// mounted tree of another user; the plain directory reads the same files.
+// filesystem reads a checkout through git when it can, because git grep
+// makes the #include scan fast. A container often has no git, or git won't
+// trust a mounted tree owned by another user. The plain directory reads the
+// same files.
 func filesystem(ctx context.Context, dir string) fs.FS {
 	if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
 		if exec.CommandContext(ctx, "git", "-C", dir, "rev-parse", "--is-inside-work-tree").Run() == nil {
@@ -193,8 +196,8 @@ func (t *Tree) Files(paths []string) []File {
 }
 
 func (t *Tree) file(p string) File {
-	// Before anything else: even a Kconfig of another architecture says
-	// that this build doesn't read it.
+	// Check the architecture first. This build reads no file of another
+	// architecture, not even a Kconfig.
 	if pa := builds.PathArch(p); pa != "" && pa != t.build.Arch {
 		return File{Path: p, Status: builds.StatusNotBuilt}
 	}
@@ -202,9 +205,9 @@ func (t *Tree) file(p string) File {
 	if !kernel {
 		return File{Path: p, Status: Skipped}
 	}
-	// A record names a file as it was when the bug was fixed. One this tree
-	// lacks may be gone, or moved here under another name, so nothing can be
-	// said of it by itself; its directory may say something (see dirGate).
+	// A record names a file as it was when the bug was fixed. A file this
+	// tree lacks may be gone, or moved here under another name, so the file
+	// alone tells nothing. Its directory may (see dirGate).
 	if _, err := fs.Stat(t.fsys, p); err != nil {
 		f := File{Path: p, Status: builds.StatusMissing}
 		if !header {
@@ -227,11 +230,12 @@ var flagHeaders = []string{"include/linux/compiler-version.h", "include/linux/kc
 
 var includeLine = regexp.MustCompile(`^\s*#\s*include\s*([<"])([^">]+)[">]`)
 
-// Compiled returns the files the sources cfg compiles include, directly or
-// not, each with the source that reached it first: the headers a build reads,
-// which no Makefile lists. An #include under an #if that cfg rules out doesn't
-// count; one that depends on anything else does, as a header missed reads as
-// not compiled, and a file reached in vain only keeps a CVE open.
+// Compiled returns the files that the sources cfg compiles include, directly
+// or indirectly, each mapped to the source that reached it first. These are
+// the headers a build reads, which no Makefile lists. An #include under an
+// #if that cfg rules out doesn't count. One under any other condition does.
+// A missed header would read as not compiled, while a file reached in vain
+// only keeps a CVE open.
 func (t *Tree) Compiled(cfg kcond.Config) (map[string]string, error) {
 	kept := func(e *kcond.Expr) bool { return t.build.Plain(e).Eval(cfg) != kcond.False }
 	search := t.searchPaths(t.build.Kbuild.IncludeDirs(kept))
@@ -276,17 +280,19 @@ func (t *Tree) Compiled(cfg kcond.Config) (map[string]string, error) {
 	return reached, nil
 }
 
-// searchPaths is where an #include looks, in order: the kernel's own
-// directories, then the -I flags of single objects. Those are shared here
-// though each holds for its object, which can only reach more.
+// searchPaths returns where an #include looks, in order. The kernel's own
+// directories come first, then the -I flags of single objects. Each -I flag
+// holds for its own object, but here all objects share them. That can only
+// reach more files, never fewer.
 func (t *Tree) searchPaths(dirs []string) []string {
 	arch := "arch/" + t.build.Kbuild.Arch + "/include"
 	return append([]string{"include", "include/uapi", arch, arch + "/uapi"}, dirs...)
 }
 
-// resolve finds the file an #include names: for a quoted name next to the
-// including file first, and last in the directories above it, as Kbuild's
-// -I$(src) and -I$(srctree) find it. "" is a generated file.
+// resolve finds the file an #include names. A quoted name is looked up next
+// to the including file first, and in the directories above it last, as
+// Kbuild's -I$(src) and -I$(srctree) find it. It returns "" for a generated
+// file.
 func (t *Tree) resolve(dir, name string, quoted bool, search []string) string {
 	var candidates []string
 	if quoted {
